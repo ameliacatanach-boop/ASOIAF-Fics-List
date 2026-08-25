@@ -71,10 +71,13 @@ const SHEET_TAB = 'Data List';
 const SHEETS_SCOPE = 'https://www.googleapis.com/auth/spreadsheets';
 const PAGE_SIZE = 25;
 
-function workIdFromLink(link) {
+function workIdFromLink(link, rowNumber) {
   const m = /\/works\/(\d+)/.exec(link || '');
-  return m ? m[1] : (link || Math.random().toString(36));
+  if (m) return m[1];
+  return 'row-' + rowNumber;
 }
+
+const TOKEN_CACHE_KEY = 'asoiaf-gtoken';
 
 function useGoogleAuth() {
   const [accessToken, setAccessToken] = useState(null);
@@ -82,7 +85,21 @@ function useGoogleAuth() {
   const [gisReady, setGisReady] = useState(false);
   const tokenClientRef = useRef(null);
 
+  const cacheToken = (token, expiresInSeconds) => {
+    const expiresAt = Date.now() + (Number(expiresInSeconds) || 3600) * 1000 - 60000;
+    try { localStorage.setItem(TOKEN_CACHE_KEY, JSON.stringify({ token, expiresAt })); } catch (e) {}
+  };
+
   useEffect(() => {
+    try {
+      const raw = localStorage.getItem(TOKEN_CACHE_KEY);
+      if (raw) {
+        const { token, expiresAt } = JSON.parse(raw);
+        if (token && expiresAt && Date.now() < expiresAt) setAccessToken(token);
+        else localStorage.removeItem(TOKEN_CACHE_KEY);
+      }
+    } catch (e) {}
+
     let cancelled = false;
     function init() {
       if (cancelled) return;
@@ -97,6 +114,7 @@ function useGoogleAuth() {
           if (resp.error) { setAuthError(resp.error_description || resp.error); return; }
           setAuthError('');
           setAccessToken(resp.access_token);
+          cacheToken(resp.access_token, resp.expires_in);
         },
       });
       setGisReady(true);
@@ -113,6 +131,7 @@ function useGoogleAuth() {
     if (accessToken && window.google) {
       window.google.accounts.oauth2.revoke(accessToken, () => {});
     }
+    localStorage.removeItem(TOKEN_CACHE_KEY);
     setAccessToken(null);
   };
 
@@ -131,7 +150,7 @@ function ficFromRow(headerIndex, row, rowNumber) {
   const num = (v) => { const n = parseInt(String(v).replace(/,/g, ''), 10); return isNaN(n) ? 0 : n; };
 
   return {
-    id: workIdFromLink(link),
+    id: workIdFromLink(link, rowNumber),
     rowNumber,
     title, link,
     date: get('Date Published').trim(),
@@ -154,13 +173,34 @@ function ficFromRow(headerIndex, row, rowNumber) {
   };
 }
 
+function authFetchError(status, body) {
+  const err = new Error(`HTTP ${status}: ${body.slice(0, 300)}`);
+  if (status === 401) err.isAuthError = true;
+  return err;
+}
+
+async function fetchWithTimeout(url, options, timeoutMs) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } catch (e) {
+    if (e.name === 'AbortError') {
+      throw new Error('Request timed out — check your connection and try again.');
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function sheetsApiGet(accessToken) {
   const range = encodeURIComponent(`'${SHEET_TAB}'!A1:AH`);
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${range}`;
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+  const res = await fetchWithTimeout(url, { headers: { Authorization: `Bearer ${accessToken}` } }, 20000);
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(`HTTP ${res.status}: ${body.slice(0, 300)}`);
+    throw authFetchError(res.status, body);
   }
   const data = await res.json();
   return data.values || [];
@@ -172,22 +212,24 @@ async function sheetsApiWriteStatus(accessToken, rowNumber, { status, dnr, kg, b
   const statusLabel = status === STATUS_UNREAD ? '' : STATUS_LABELS[status];
   const dnrLabel = dnr ? DNR_LABELS[dnr] : '';
   const body = { values: [[statusLabel, dnrLabel, kg ? 'Y' : '', bk ? 'Y' : '']] };
-  const res = await fetch(url, {
+  const res = await fetchWithTimeout(url, {
     method: 'PUT',
     headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
-  });
+  }, 15000);
   if (!res.ok) {
     const errBody = await res.text();
-    throw new Error(`HTTP ${res.status}: ${errBody.slice(0, 300)}`);
+    throw authFetchError(res.status, errBody);
   }
 }
 
-function useSheetFics(accessToken) {
+function useSheetFics(accessToken, onAuthError) {
   const [fics, setFics] = useState([]);
   const [status, setStatus] = useState('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const [lastSynced, setLastSynced] = useState(null);
+  const ficsRef = useRef([]);
+  useEffect(() => { ficsRef.current = fics; }, [fics]);
 
   const fetchFics = useCallback(async () => {
     if (!accessToken) return;
@@ -210,50 +252,35 @@ function useSheetFics(accessToken) {
     } catch (e) {
       setErrorMsg(e.message || String(e));
       setStatus('error');
+      if (e.isAuthError && onAuthError) onAuthError();
     }
   }, [accessToken]);
 
   useEffect(() => { fetchFics(); }, [fetchFics]);
 
   const updateFic = useCallback(async (ficId, patch) => {
-    let targetIdx = -1, prevFic = null;
-    setFics(prev => {
-      const idx = prev.findIndex(f => f.id === ficId);
-      if (idx === -1) return prev;
-      targetIdx = idx;
-      prevFic = prev[idx];
-      const next = [...prev];
-      next[idx] = { ...prev[idx], ...patch, syncState: 'syncing', syncError: '' };
-      return next;
-    });
-    if (targetIdx === -1) return;
+    // Read the current fic from a ref rather than as a side effect inside a setState
+    // updater — updater functions must stay pure, since React can invoke them more
+    // than once, which was silently corrupting this lookup previously.
+    const prevFic = ficsRef.current.find(f => f.id === ficId);
+    if (!prevFic) return;
+
+    setFics(prev => prev.map(f => f.id === ficId ? { ...f, ...patch, syncState: 'syncing', syncError: '' } : f));
+
     try {
       const merged = { ...prevFic, ...patch };
       await sheetsApiWriteStatus(accessToken, merged.rowNumber, merged);
-      setFics(prev => {
-        const next = [...prev];
-        if (next[targetIdx] && next[targetIdx].id === ficId) next[targetIdx] = { ...next[targetIdx], syncState: 'idle' };
-        return next;
-      });
+      setFics(prev => prev.map(f => f.id === ficId ? { ...f, syncState: 'idle' } : f));
     } catch (e) {
-      setFics(prev => {
-        const next = [...prev];
-        if (next[targetIdx] && next[targetIdx].id === ficId) {
-          next[targetIdx] = { ...prevFic, syncState: 'error', syncError: e.message || String(e) };
-        }
-        return next;
-      });
+      setFics(prev => prev.map(f => f.id === ficId ? { ...prevFic, syncState: 'error', syncError: e.message || String(e) } : f));
+      if (e.isAuthError && onAuthError) onAuthError();
     }
   }, [accessToken]);
 
   const retrySync = useCallback((ficId) => {
-    setFics(prev => {
-      const idx = prev.findIndex(f => f.id === ficId);
-      if (idx === -1) return prev;
-      const fic = prev[idx];
-      updateFic(ficId, { status: fic.status, dnr: fic.dnr, kg: fic.kg, bk: fic.bk });
-      return prev;
-    });
+    const fic = ficsRef.current.find(f => f.id === ficId);
+    if (!fic) return;
+    updateFic(ficId, { status: fic.status, dnr: fic.dnr, kg: fic.kg, bk: fic.bk });
   }, [updateFic]);
 
   return { fics, status, errorMsg, lastSynced, refresh: fetchFics, updateFic, retrySync };
@@ -577,7 +604,7 @@ function ExportPanel({ fics, onClose }) {
 
 function ASOIAFRolladexLive() {
   const { accessToken, gisReady, signIn, signOut, authError } = useGoogleAuth();
-  const { fics, status: syncStatus, errorMsg, lastSynced, refresh, updateFic, retrySync } = useSheetFics(accessToken);
+  const { fics, status: syncStatus, errorMsg, lastSynced, refresh, updateFic, retrySync } = useSheetFics(accessToken, signOut);
   const scores = useComputedScores(fics);
 
   const [search, setSearch] = useState('');
@@ -628,6 +655,8 @@ function ASOIAFRolladexLive() {
   if (!accessToken) return <SignInScreen onSignIn={signIn} gisReady={gisReady} authError={authError} />;
 
   const activeFilterCount = ratingFilter.size + wordFilter.size;
+  const failedSyncCount = fics.filter(f => f.syncState === 'error').length;
+  const syncingCount = fics.filter(f => f.syncState === 'syncing').length;
   const visible = filteredIndices.slice(0, visibleCount);
 
   return (
@@ -663,6 +692,16 @@ function ASOIAFRolladexLive() {
           </div>
         )}
         {syncStatus === 'error' && (<div className="mt-2 p-2.5 rounded-lg text-xs" style={{ backgroundColor: '#FBEAEA', color: COLORS.maroon }}>{errorMsg}</div>)}
+        {failedSyncCount > 0 && (
+          <div className="mt-2 p-2.5 rounded-lg text-xs font-medium" style={{ backgroundColor: '#FBEAEA', color: COLORS.maroon }}>
+            {failedSyncCount} fic{failedSyncCount === 1 ? '' : 's'} failed to save to your sheet — scroll down to find the red "tap to retry" note on each.
+          </div>
+        )}
+        {syncingCount > 0 && failedSyncCount === 0 && (
+          <div className="mt-2 p-2.5 rounded-lg text-xs" style={{ backgroundColor: COLORS.paperCard, border: `1px solid ${COLORS.line}`, color: COLORS.inkSoft }}>
+            Saving {syncingCount} change{syncingCount === 1 ? '' : 's'} to your sheet…
+          </div>
+        )}
 
         <div className="mt-3 flex items-center gap-2 rounded-full px-3 py-2.5" style={{ backgroundColor: COLORS.paperCard, border: `1px solid ${COLORS.line}` }}>
           <Search size={16} color={COLORS.inkSoft} />
