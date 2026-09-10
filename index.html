@@ -46,11 +46,12 @@ function Megaphone(props) { return <svg xmlns="http://www.w3.org/2000/svg" width
 
 const STATUS_LABELS = ['Unread', 'Read', 'DNF', 'Skipped', 'Not Interested', 'Currently Reading', 'TBR'];
 const STATUS_UNREAD=0, STATUS_READ=1, STATUS_DNF=2, STATUS_SKIPPED=3, STATUS_NOTINT=4, STATUS_READING=5, STATUS_TBR=6;
-const DNR_LABELS = ['—', 'Writing/Pacing', 'Content/Tags', 'Content/Ships', 'Content/Category', 'Other'];
-const DNR_WRITING=1, DNR_CONTENT_TAGS=2, DNR_CONTENT_SHIPS=3, DNR_CONTENT_CAT=4, DNR_OTHER=5;
+const DNR_LABELS = { 0: '—', 1: 'Writing/Pacing', 2: 'Content', 3: 'Other', 10: 'Content/Tags', 11: 'Content/Ships', 12: 'Content/Category' };
+const DNR_WRITING=1, DNR_CONTENT=2, DNR_OTHER=3;
+const DNR_LEGACY_CONTENT_TAGS=10, DNR_LEGACY_CONTENT_SHIPS=11, DNR_LEGACY_CONTENT_CAT=12;
 
 const STATUS_CODE_MAP = { '': 0, 'Read': 1, 'DNF': 2, 'Skipped': 3, 'Not Interested': 4, 'Currently Reading': 5, 'TBR': 6 };
-const DNR_CODE_MAP = { '': 0, 'Writing/Pacing': 1, 'Content/Tags': 2, 'Content/Ships': 3, 'Content/Category': 4, 'Other': 5 };
+const DNR_CODE_MAP = { '': 0, 'Writing/Pacing': 1, 'Content': 2, 'Other': 3, 'Content/Tags': 10, 'Content/Ships': 11, 'Content/Category': 12 };
 
 const COLORS = {
   paper: '#EFEAE0', paperCard: '#FFFFFF', ink: '#231F20', inkSoft: '#75706A',
@@ -155,6 +156,9 @@ function ficFromRow(headerIndex, row, rowNumber) {
   const authors = authorsRaw ? authorsRaw.split(',').map(a => a.trim()).filter(Boolean) : [];
   const dnrTagsRaw = get('DNR Tags').trim();
   const dnrTags = dnrTagsRaw ? dnrTagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [];
+  const dnrShipsRaw = get('DNR Ships').trim();
+  const dnrShips = dnrShipsRaw ? dnrShipsRaw.split(',').map(s => s.trim()).filter(Boolean) : [];
+  const dnrCategory = get('DNR Category').trim().toUpperCase() === 'Y';
   const num = (v) => { const n = parseInt(String(v).replace(/,/g, ''), 10); return isNaN(n) ? 0 : n; };
 
   return {
@@ -175,7 +179,7 @@ function ficFromRow(headerIndex, row, rowNumber) {
     summary: get('Summary').trim(),
     status: STATUS_CODE_MAP[get('Status').trim()] ?? 0,
     dnr: DNR_CODE_MAP[get('DNR Reason').trim()] ?? 0,
-    dnrTags,
+    dnrTags, dnrShips, dnrCategory,
     kg: get('K').trim().toUpperCase() === 'Y',
     bk: get('B').trim().toUpperCase() === 'Y',
     recommended: get('Recommended').trim().toUpperCase() === 'Y',
@@ -242,7 +246,7 @@ async function sheetsApiWriteCell(accessToken, rowNumber, colLetterVal, value) {
   }
 }
 
-async function sheetsApiWriteStatus(accessToken, rowNumber, { status, dnr, kg, bk, dnrTags }, dnrTagsCol) {
+async function sheetsApiWriteStatus(accessToken, rowNumber, { status, dnr, kg, bk, dnrTags, dnrShips, dnrCategory }, dnrTagsCol, dnrShipsCol, dnrCategoryCol) {
   const range = encodeURIComponent(`'${SHEET_TAB}'!B${rowNumber}:E${rowNumber}`);
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${range}?valueInputOption=USER_ENTERED`;
   const statusLabel = status === STATUS_UNREAD ? '' : STATUS_LABELS[status];
@@ -261,6 +265,12 @@ async function sheetsApiWriteStatus(accessToken, rowNumber, { status, dnr, kg, b
   if (dnrTagsCol) {
     await sheetsApiWriteCell(accessToken, rowNumber, dnrTagsCol, (dnrTags && dnrTags.length) ? dnrTags.join(', ') : '');
   }
+  if (dnrShipsCol) {
+    await sheetsApiWriteCell(accessToken, rowNumber, dnrShipsCol, (dnrShips && dnrShips.length) ? dnrShips.join(', ') : '');
+  }
+  if (dnrCategoryCol) {
+    await sheetsApiWriteCell(accessToken, rowNumber, dnrCategoryCol, dnrCategory ? 'Y' : '');
+  }
 }
 
 async function sheetsApiWriteRecommendation(accessToken, rowNumber, { recommended, recSource }, recCol, recSourceCol) {
@@ -275,6 +285,8 @@ function useSheetFics(accessToken, onAuthError) {
   const [lastSynced, setLastSynced] = useState(null);
   const ficsRef = useRef([]);
   const dnrTagsColRef = useRef(null);
+  const dnrShipsColRef = useRef(null);
+  const dnrCategoryColRef = useRef(null);
   const recColRef = useRef(null);
   const recSourceColRef = useRef(null);
   useEffect(() => { ficsRef.current = fics; }, [fics]);
@@ -290,6 +302,8 @@ function useSheetFics(accessToken, onAuthError) {
       const headerIndex = {};
       header.forEach((h, i) => { headerIndex[h.trim()] = i; });
       dnrTagsColRef.current = headerIndex['DNR Tags'] !== undefined ? colLetter(headerIndex['DNR Tags']) : null;
+      dnrShipsColRef.current = headerIndex['DNR Ships'] !== undefined ? colLetter(headerIndex['DNR Ships']) : null;
+      dnrCategoryColRef.current = headerIndex['DNR Category'] !== undefined ? colLetter(headerIndex['DNR Category']) : null;
       recColRef.current = headerIndex['Recommended'] !== undefined ? colLetter(headerIndex['Recommended']) : null;
       recSourceColRef.current = headerIndex['Rec Source'] !== undefined ? colLetter(headerIndex['Rec Source']) : null;
       const parsedFics = [];
@@ -320,7 +334,7 @@ function useSheetFics(accessToken, onAuthError) {
 
     try {
       const merged = { ...prevFic, ...patch };
-      await sheetsApiWriteStatus(accessToken, merged.rowNumber, merged, dnrTagsColRef.current);
+      await sheetsApiWriteStatus(accessToken, merged.rowNumber, merged, dnrTagsColRef.current, dnrShipsColRef.current, dnrCategoryColRef.current);
       setFics(prev => prev.map(f => f.id === ficId ? { ...f, syncState: 'idle' } : f));
     } catch (e) {
       setFics(prev => prev.map(f => f.id === ficId ? { ...prevFic, syncState: 'error', syncError: e.message || String(e), syncType: 'status' } : f));
@@ -334,7 +348,7 @@ function useSheetFics(accessToken, onAuthError) {
     if (fic.syncType === 'recommendation') {
       updateRecommendation(ficId, { recommended: fic.recommended, recSource: fic.recSource });
     } else {
-      updateFic(ficId, { status: fic.status, dnr: fic.dnr, kg: fic.kg, bk: fic.bk, dnrTags: fic.dnrTags });
+      updateFic(ficId, { status: fic.status, dnr: fic.dnr, kg: fic.kg, bk: fic.bk, dnrTags: fic.dnrTags, dnrShips: fic.dnrShips, dnrCategory: fic.dnrCategory });
     }
   }, [updateFic]);
 
@@ -410,6 +424,32 @@ function useComputedScores(fics) {
       map.get(key)[field] += amount;
     }
 
+    // Given a fic and its DNF/Not Interested reason, work out which specific tags/ships/
+    // category should take the penalty. The unified "Content" reason only penalizes
+    // whatever the user explicitly isolated; the legacy single-dimension reasons
+    // (kept for fics marked before this was merged) fall back to blanket-penalizing
+    // that whole dimension, exactly as they did before.
+    function contentPenaltyTargets(f, d) {
+      if (d === DNR_CONTENT) {
+        return {
+          tags: (f.dnrTags && f.dnrTags.length) ? f.dnrTags : [],
+          ships: (f.dnrShips && f.dnrShips.length) ? f.dnrShips : [],
+          category: !!f.dnrCategory,
+        };
+      }
+      if (d === DNR_LEGACY_CONTENT_TAGS) return { tags: f.tags, ships: [], category: false };
+      if (d === DNR_LEGACY_CONTENT_SHIPS) return { tags: [], ships: f.ships, category: false };
+      if (d === DNR_LEGACY_CONTENT_CAT) return { tags: [], ships: [], category: true };
+      if (d === DNR_OTHER) return { tags: f.tags, ships: f.ships, category: true };
+      return { tags: [], ships: [], category: false }; // Writing/Pacing or unset: no content penalty
+    }
+    // Author affinity is protected from any "Content" reason (old or new) since that's
+    // about tags/ships/category, not the writing — but IS penalized by Writing/Pacing
+    // and Other, matching the flipped logic used for tags.
+    function authorExcluded(d) {
+      return d === DNR_CONTENT || d === DNR_LEGACY_CONTENT_TAGS || d === DNR_LEGACY_CONTENT_SHIPS || d === DNR_LEGACY_CONTENT_CAT;
+    }
+
     for (let i = 0; i < n; i++) {
       const s = status[i], d = dnr[i], f = fics[i];
       if (s === STATUS_READ) {
@@ -419,30 +459,17 @@ function useComputedScores(fics) {
         bump(catStats, f.category, 'readW', w);
         for (const a of realAuthors(f)) bump(authorStats, a, 'readW', w);
       } else if (s === STATUS_DNF) {
-        if (d === DNR_CONTENT_TAGS && f.dnrTags && f.dnrTags.length) {
-          for (const t of f.dnrTags) bump(tagStats, t, 'dnf', 1);
-        } else if (d !== DNR_WRITING && d !== DNR_CONTENT_SHIPS) {
-          for (const t of f.tags) bump(tagStats, t, 'dnf', 1);
-        }
-        if (d !== DNR_WRITING && d !== DNR_CONTENT_TAGS) for (const sh of f.ships) bump(shipStats, sh, 'dnf', 1);
-        if (d !== DNR_WRITING && d !== DNR_CONTENT_TAGS) bump(catStats, f.category, 'dnf', 1);
-        // Author affinity flips the exclusion: Writing/Pacing DOES count against the
-        // author, while content-focused reasons (tags/ships/category) don't reflect
-        // on who wrote it.
-        if (d !== DNR_CONTENT_TAGS && d !== DNR_CONTENT_SHIPS && d !== DNR_CONTENT_CAT) {
-          for (const a of realAuthors(f)) bump(authorStats, a, 'dnf', 1);
-        }
+        const targets = contentPenaltyTargets(f, d);
+        for (const t of targets.tags) bump(tagStats, t, 'dnf', 1);
+        for (const sh of targets.ships) bump(shipStats, sh, 'dnf', 1);
+        if (targets.category) bump(catStats, f.category, 'dnf', 1);
+        if (!authorExcluded(d)) for (const a of realAuthors(f)) bump(authorStats, a, 'dnf', 1);
       } else if (s === STATUS_NOTINT) {
-        if (d === DNR_CONTENT_TAGS && f.dnrTags && f.dnrTags.length) {
-          for (const t of f.dnrTags) bump(tagStats, t, 'notInt', 1);
-        } else if (d !== DNR_WRITING && d !== DNR_CONTENT_SHIPS) {
-          for (const t of f.tags) bump(tagStats, t, 'notInt', 1);
-        }
-        if (d !== DNR_WRITING && d !== DNR_CONTENT_TAGS) for (const sh of f.ships) bump(shipStats, sh, 'notInt', 1);
-        if (d !== DNR_WRITING && d !== DNR_CONTENT_TAGS) bump(catStats, f.category, 'notInt', 1);
-        if (d !== DNR_CONTENT_TAGS && d !== DNR_CONTENT_SHIPS && d !== DNR_CONTENT_CAT) {
-          for (const a of realAuthors(f)) bump(authorStats, a, 'notInt', 1);
-        }
+        const targets = contentPenaltyTargets(f, d);
+        for (const t of targets.tags) bump(tagStats, t, 'notInt', 1);
+        for (const sh of targets.ships) bump(shipStats, sh, 'notInt', 1);
+        if (targets.category) bump(catStats, f.category, 'notInt', 1);
+        if (!authorExcluded(d)) for (const a of realAuthors(f)) bump(authorStats, a, 'notInt', 1);
       }
     }
 
@@ -496,31 +523,37 @@ function Chip({ active, onClick, children, color }) {
   );
 }
 
-function StatusPicker({ ficId, status, dnr, dnrTags, kg, bk, tags, onUpdate }) {
+function StatusPicker({ ficId, status, dnr, dnrTags, dnrShips, dnrCategory, kg, bk, tags, ships, category, onUpdate }) {
   const [pendingStatus, setPendingStatus] = useState(null);
   const [pendingDnrCode, setPendingDnrCode] = useState(null);
   const [pickedDnrTags, setPickedDnrTags] = useState([]);
+  const [pickedDnrShips, setPickedDnrShips] = useState([]);
+  const [pickedDnrCategory, setPickedDnrCategory] = useState(false);
 
   const setStatus = (s) => {
     setPendingDnrCode(null);
     if (s === STATUS_READ) setPendingStatus(STATUS_READ);
     else if (s === STATUS_DNF || s === STATUS_NOTINT) setPendingStatus(s);
-    else { onUpdate(ficId, { status: s, dnr: 0, dnrTags: [] }); setPendingStatus(null); }
+    else { onUpdate(ficId, { status: s, dnr: 0, dnrTags: [], dnrShips: [], dnrCategory: false }); setPendingStatus(null); }
   };
   const confirmRead = (kgVal, bkVal) => { onUpdate(ficId, { status: STATUS_READ, kg: kgVal, bk: bkVal }); setPendingStatus(null); };
   const confirmDnr = (reasonCode) => {
-    if (reasonCode === DNR_CONTENT_TAGS) {
+    if (reasonCode === DNR_CONTENT) {
       setPendingDnrCode(reasonCode);
       setPickedDnrTags(dnrTags && dnrTags.length ? dnrTags : []);
+      setPickedDnrShips(dnrShips && dnrShips.length ? dnrShips : []);
+      setPickedDnrCategory(!!dnrCategory);
     } else {
-      onUpdate(ficId, { status: pendingStatus, dnr: reasonCode, dnrTags: [] });
+      onUpdate(ficId, { status: pendingStatus, dnr: reasonCode, dnrTags: [], dnrShips: [], dnrCategory: false });
       setPendingStatus(null);
     }
   };
   const toggleDnrTag = (t) => setPickedDnrTags(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]);
-  const confirmDnrTags = () => {
-    onUpdate(ficId, { status: pendingStatus, dnr: DNR_CONTENT_TAGS, dnrTags: pickedDnrTags });
-    setPendingStatus(null); setPendingDnrCode(null); setPickedDnrTags([]);
+  const toggleDnrShip = (sh) => setPickedDnrShips(prev => prev.includes(sh) ? prev.filter(x => x !== sh) : [...prev, sh]);
+  const anyPicked = pickedDnrTags.length > 0 || pickedDnrShips.length > 0 || pickedDnrCategory;
+  const confirmDnrContent = () => {
+    onUpdate(ficId, { status: pendingStatus, dnr: DNR_CONTENT, dnrTags: pickedDnrTags, dnrShips: pickedDnrShips, dnrCategory: pickedDnrCategory });
+    setPendingStatus(null); setPendingDnrCode(null); setPickedDnrTags([]); setPickedDnrShips([]); setPickedDnrCategory(false);
   };
 
   return (
@@ -544,46 +577,66 @@ function StatusPicker({ ficId, status, dnr, dnrTags, kg, bk, tags, onUpdate }) {
         <div className="mt-2 p-3 rounded-lg" style={{ backgroundColor: COLORS.paper }}>
           <p className="text-xs font-medium mb-2" style={{ color: COLORS.inkSoft }}>Why?</p>
           <div className="flex gap-2 flex-wrap">
-            {[DNR_WRITING, DNR_CONTENT_TAGS, DNR_CONTENT_SHIPS, DNR_CONTENT_CAT, DNR_OTHER].map(code => (
+            {[DNR_WRITING, DNR_CONTENT, DNR_OTHER].map(code => (
               <button key={code} onClick={() => confirmDnr(code)} className="text-sm px-3 py-2 rounded-full border font-medium" style={{ borderColor: COLORS.line, backgroundColor: COLORS.paperCard, color: COLORS.ink }}>{DNR_LABELS[code]}</button>
             ))}
           </div>
         </div>
       )}
-      {pendingDnrCode === DNR_CONTENT_TAGS && (
+      {pendingDnrCode === DNR_CONTENT && (
         <div className="mt-2 p-3 rounded-lg" style={{ backgroundColor: COLORS.paper }}>
-          <p className="text-xs font-medium mb-2" style={{ color: COLORS.inkSoft }}>Which tag(s) were the issue?</p>
-          {tags.length === 0 ? (
-            <p className="text-xs" style={{ color: COLORS.inkSoft }}>This fic has no tags to pick from.</p>
-          ) : (
-            <div className="flex flex-wrap gap-1.5">
-              {tags.map(t => (
-                <Chip key={t} active={pickedDnrTags.includes(t)} onClick={() => toggleDnrTag(t)} color={COLORS.maroon}>{t}</Chip>
-              ))}
+          <p className="text-xs font-medium mb-2" style={{ color: COLORS.inkSoft }}>What was the issue? (pick any mix of tags, ships, or category)</p>
+
+          {tags.length > 0 && (
+            <div className="mb-2">
+              <p className="text-[10px] font-semibold uppercase tracking-wide mb-1" style={{ color: COLORS.inkSoft }}>Tags</p>
+              <div className="flex flex-wrap gap-1.5">
+                {tags.map(t => (<Chip key={t} active={pickedDnrTags.includes(t)} onClick={() => toggleDnrTag(t)} color={COLORS.maroon}>{t}</Chip>))}
+              </div>
             </div>
           )}
+
+          {ships.length > 0 && (
+            <div className="mb-2">
+              <p className="text-[10px] font-semibold uppercase tracking-wide mb-1" style={{ color: COLORS.inkSoft }}>Ships</p>
+              <div className="flex flex-wrap gap-1.5">
+                {ships.map(sh => (<Chip key={sh} active={pickedDnrShips.includes(sh)} onClick={() => toggleDnrShip(sh)} color={COLORS.maroon}>{sh}</Chip>))}
+              </div>
+            </div>
+          )}
+
+          <div className="mb-2">
+            <p className="text-[10px] font-semibold uppercase tracking-wide mb-1" style={{ color: COLORS.inkSoft }}>Category</p>
+            <Chip active={pickedDnrCategory} onClick={() => setPickedDnrCategory(v => !v)} color={COLORS.maroon}>{category}</Chip>
+          </div>
+
           <button
-            onClick={confirmDnrTags}
-            disabled={pickedDnrTags.length === 0}
-            className="mt-3 text-sm px-4 py-2 rounded-full font-semibold"
-            style={{ backgroundColor: pickedDnrTags.length ? COLORS.ink : COLORS.line, color: pickedDnrTags.length ? COLORS.paperCard : COLORS.inkSoft }}
+            onClick={confirmDnrContent}
+            disabled={!anyPicked}
+            className="mt-1 text-sm px-4 py-2 rounded-full font-semibold"
+            style={{ backgroundColor: anyPicked ? COLORS.ink : COLORS.line, color: anyPicked ? COLORS.paperCard : COLORS.inkSoft }}
           >
-            Confirm{pickedDnrTags.length ? ` (${pickedDnrTags.length})` : ''}
+            Confirm
           </button>
-          {pickedDnrTags.length === 0 && (
-            <p className="text-[11px] mt-1.5" style={{ color: COLORS.inkSoft }}>Select at least one tag to isolate it — otherwise pick a different reason above.</p>
+          {!anyPicked && (
+            <p className="text-[11px] mt-1.5" style={{ color: COLORS.inkSoft }}>Select at least one item — otherwise pick a different reason above.</p>
           )}
         </div>
       )}
       {status !== STATUS_UNREAD && pendingStatus === null && (
         <p className="text-[11px] mt-1.5" style={{ color: COLORS.inkSoft }}>
           {status === STATUS_READ && `Kudos: ${kg ? 'Yes' : 'No'} · Bookmarked: ${bk ? 'Yes' : 'No'}`}
-          {(status === STATUS_DNF || status === STATUS_NOTINT) && dnr > 0 && (
-            <>
-              {`Reason: ${DNR_LABELS[dnr]}`}
-              {dnr === DNR_CONTENT_TAGS && dnrTags && dnrTags.length > 0 && ` (${dnrTags.join(', ')})`}
-            </>
-          )}
+          {(status === STATUS_DNF || status === STATUS_NOTINT) && dnr > 0 && (() => {
+            if (dnr === DNR_CONTENT) {
+              const parts = [];
+              if (dnrTags && dnrTags.length) parts.push(`Tags: ${dnrTags.join(', ')}`);
+              if (dnrShips && dnrShips.length) parts.push(`Ships: ${dnrShips.join(', ')}`);
+              if (dnrCategory) parts.push('Category');
+              return `Reason: Content${parts.length ? ` (${parts.join('; ')})` : ''}`;
+            }
+            if (dnr === DNR_LEGACY_CONTENT_TAGS) return `Reason: ${DNR_LABELS[dnr]}${dnrTags && dnrTags.length ? ` (${dnrTags.join(', ')})` : ''}`;
+            return `Reason: ${DNR_LABELS[dnr]}`;
+          })()}
         </p>
       )}
     </div>
@@ -710,7 +763,7 @@ function FicCard({ fic, scores, ficIndex, onUpdate, onRetry, onUpdateRecommendat
       </div>
 
       {expanded && (
-        <StatusPicker ficId={fic.id} status={status} dnr={scores.dnr[ficIndex]} dnrTags={fic.dnrTags} kg={scores.kg[ficIndex]} bk={scores.bk[ficIndex]} tags={fic.tags} onUpdate={onUpdate} />
+        <StatusPicker ficId={fic.id} status={status} dnr={scores.dnr[ficIndex]} dnrTags={fic.dnrTags} dnrShips={fic.dnrShips} dnrCategory={fic.dnrCategory} kg={scores.kg[ficIndex]} bk={scores.bk[ficIndex]} tags={fic.tags} ships={fic.ships} category={fic.category} onUpdate={onUpdate} />
       )}
     </div>
   );
