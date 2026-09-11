@@ -221,7 +221,7 @@ async function fetchWithTimeout(url, options, timeoutMs) {
 }
 
 async function sheetsApiGet(accessToken) {
-  const range = encodeURIComponent(`'${SHEET_TAB}'!A1:AH`);
+  const range = encodeURIComponent(`'${SHEET_TAB}'!A1:ZZ`);
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${range}`;
   const res = await fetchWithTimeout(url, { headers: { Authorization: `Bearer ${accessToken}` } }, 20000);
   if (!res.ok) {
@@ -274,6 +274,9 @@ async function sheetsApiWriteStatus(accessToken, rowNumber, { status, dnr, kg, b
 }
 
 async function sheetsApiWriteRecommendation(accessToken, rowNumber, { recommended, recSource }, recCol, recSourceCol) {
+  if (!recCol && !recSourceCol) {
+    throw new Error('Could not find a "Recommended" or "Rec Source" column in your sheet — check the exact column header spelling (case-sensitive).');
+  }
   if (recCol) await sheetsApiWriteCell(accessToken, rowNumber, recCol, recommended ? 'Y' : '');
   if (recSourceCol) await sheetsApiWriteCell(accessToken, rowNumber, recSourceCol, recommended ? (recSource || '') : '');
 }
@@ -661,7 +664,7 @@ function RecommendToggle({ ficId, recommended, recSource, onUpdate }) {
       {picking && (
         <div className="absolute right-4 mt-1 p-2 rounded-lg flex gap-2 z-20" style={{ backgroundColor: COLORS.paperCard, border: `1px solid ${COLORS.line}` }}>
           <button onClick={() => pick('Social Media')} className="text-xs px-2.5 py-1.5 rounded-full border font-medium" style={{ borderColor: COLORS.line, color: COLORS.ink }}>Social Media</button>
-          <button onClick={() => pick('Personal')} className="text-xs px-2.5 py-1.5 rounded-full border font-medium" style={{ borderColor: COLORS.line, color: COLORS.ink }}>Personal</button>
+          <button onClick={() => pick('AO3')} className="text-xs px-2.5 py-1.5 rounded-full border font-medium" style={{ borderColor: COLORS.line, color: COLORS.ink }}>AO3</button>
         </div>
       )}
     </div>
@@ -693,9 +696,14 @@ function FicCard({ fic, scores, ficIndex, onUpdate, onRetry, onUpdateRecommendat
           <span className="text-[10px]" style={{ color: COLORS.inkSoft }}>Saving to sheet…</span>
         )}
         {fic.syncState === 'error' && (
-          <button onClick={() => onRetry(fic.id)} className="text-[10px] font-semibold underline" style={{ color: COLORS.maroon }}>
-            Save failed — tap to retry
-          </button>
+          <div className="flex flex-col">
+            <button onClick={() => onRetry(fic.id)} className="text-[10px] font-semibold underline text-left" style={{ color: COLORS.maroon }}>
+              Save failed — tap to retry
+            </button>
+            {fic.syncError && (
+              <span className="text-[10px]" style={{ color: COLORS.maroon }}>{fic.syncError}</span>
+            )}
+          </div>
         )}
       </div>
       <div className="flex items-start justify-between gap-2">
