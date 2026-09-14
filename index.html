@@ -393,6 +393,23 @@ function computePercentileRanks(values) {
 const ANONYMOUS_AUTHORS = new Set(['anonymous', 'orphan_account', 'orphan account']);
 function realAuthors(fic) { return fic.authors.filter(a => !ANONYMOUS_AUTHORS.has(a.trim().toLowerCase())); }
 
+const MONTH_MAP = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+function parseFicDate(str) {
+  if (!str) return 0;
+  const s = str.trim();
+  const m = /^(\d{1,2})-([A-Za-z]{3})-(\d{2,4})$/.exec(s);
+  if (m) {
+    const day = parseInt(m[1], 10);
+    const month = MONTH_MAP[m[2]];
+    let year = parseInt(m[3], 10);
+    if (year < 100) year += 2000;
+    if (month === undefined) return 0;
+    return new Date(year, month, day).getTime();
+  }
+  const t = Date.parse(s);
+  return isNaN(t) ? 0 : t;
+}
+
 function useComputedScores(fics) {
   return useMemo(() => {
     if (fics.length === 0) return null;
@@ -480,37 +497,65 @@ function useComputedScores(fics) {
       const s = map.get(key);
       if (!s) return { affinity: 0, totalRated: 0 };
       const totalRated = s.readW + s.dnf + s.notInt;
-      const affinity = totalRated === 0 ? 0 : (s.readW - s.dnf * dnfWeight - s.notInt) / totalRated;
+      const rawAffinity = totalRated === 0 ? 0 : (s.readW - s.dnf * dnfWeight - s.notInt) / totalRated;
+      // Confidence shrinkage: a tag/ship/category/author with little evidence behind it
+      // gets pulled toward neutral, so one early DNF can't swing it as hard as a
+      // pattern backed by a dozen ratings. C=3 means ~1 rating -> 1/4 strength,
+      // ~3 ratings -> half strength, approaching full strength as evidence grows.
+      const C = 3;
+      const confidence = totalRated / (totalRated + C);
+      const affinity = rawAffinity * confidence;
       return { affinity, totalRated };
     }
 
     const pScore = new Array(n);
     for (let i = 0; i < n; i++) {
       const f = fics[i];
-      let tSum = 0, tCount = 0;
+
+      // Fix 3: strength-weighted average — a tag/ship you feel strongly about (positive
+      // or negative) pulls harder than ones you're merely neutral on, instead of
+      // every rated item counting equally and averaging strong signals away.
+      let tSum = 0, tWeight = 0, tCount = 0;
       for (const t of f.tags) {
         const { affinity, totalRated } = affinityOf(tagStats, t, 0.5);
-        if (totalRated > 0) { tSum += affinity; tCount++; }
+        if (totalRated > 0) { tCount++; tSum += affinity * Math.abs(affinity); tWeight += Math.abs(affinity); }
       }
-      const ad = tCount > 0 ? tSum / tCount : 0;
+      const tagHasData = tCount > 0;
+      const ad = tWeight > 0 ? tSum / tWeight : 0;
 
-      let sSum = 0, sCount = 0;
+      let sSum = 0, sWeight = 0, sCount = 0;
       for (const sh of f.ships) {
         const { affinity, totalRated } = affinityOf(shipStats, sh, 0.15);
-        if (totalRated > 0) { sSum += affinity; sCount++; }
+        if (totalRated > 0) { sCount++; sSum += affinity * Math.abs(affinity); sWeight += Math.abs(affinity); }
       }
-      const af = sCount > 0 ? sSum / sCount : 0;
+      const shipHasData = sCount > 0;
+      const af = sWeight > 0 ? sSum / sWeight : 0;
 
-      const { affinity: ae } = affinityOf(catStats, f.category, 0.5);
+      const { affinity: aeRaw, totalRated: catTotalRated } = affinityOf(catStats, f.category, 0.5);
+      const catHasData = catTotalRated > 0;
+      const ae = Math.max(0, aeRaw);
 
-      let auSum = 0, auCount = 0;
+      let auSum = 0, auWeight = 0, auCount = 0;
       for (const a of realAuthors(f)) {
         const { affinity, totalRated } = affinityOf(authorStats, a, 0.5);
-        if (totalRated > 0) { auSum += affinity; auCount++; }
+        if (totalRated > 0) { auCount++; auSum += affinity * Math.abs(affinity); auWeight += Math.abs(affinity); }
       }
-      const au = auCount > 0 ? auSum / auCount : 0;
+      const authorHasData = auCount > 0;
+      const auRaw = auWeight > 0 ? auSum / auWeight : 0;
+      const au = Math.max(0, auRaw);
 
-      pScore[i] = qScore[i] * (1 + 0.6 * ad) * (1 + 0.6 * af) * (1 + 0.3 * Math.max(0, ae)) * (1 + 0.9 * Math.max(0, au));
+      // Fix 2: combine the active dimensions into ONE weighted-average adjustment
+      // instead of multiplying independent (1 + weight*affinity) factors together.
+      // Multiplying let two negative signals compound harder than either alone
+      // intended; averaging lets multiple signals blend instead.
+      let weightSum = 0, adjSum = 0;
+      if (tagHasData) { weightSum += 0.6; adjSum += 0.6 * ad; }
+      if (shipHasData) { weightSum += 0.6; adjSum += 0.6 * af; }
+      if (catHasData) { weightSum += 0.3; adjSum += 0.3 * ae; }
+      if (authorHasData) { weightSum += 0.9; adjSum += 0.9 * au; }
+      const combinedAdjustment = weightSum > 0 ? adjSum / weightSum : 0;
+
+      pScore[i] = qScore[i] * (1 + combinedAdjustment);
     }
 
     return { status, dnr, kg, bk, pScore, qScore };
@@ -929,7 +974,7 @@ function ASOIAFRolladexLive() {
     }
     if (sortBy === 'score') indices.sort((a, b) => scores.pScore[b] - scores.pScore[a]);
     else if (sortBy === 'qscore') indices.sort((a, b) => scores.qScore[b] - scores.qScore[a]);
-    else if (sortBy === 'recent') indices.sort((a, b) => (fics[b].date || '').localeCompare(fics[a].date || ''));
+    else if (sortBy === 'recent') indices.sort((a, b) => parseFicDate(fics[b].date) - parseFicDate(fics[a].date));
     else if (sortBy === 'kudos') indices.sort((a, b) => fics[b].kudos - fics[a].kudos);
     return indices;
   }, [fics, scores, search, statusFilter, ratingFilter, wordFilter, selectedTags, excludedTags, recommendedOnly, sortBy]);
