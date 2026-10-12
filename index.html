@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <meta name="color-scheme" content="light dark" />
-<title>Drarry Fics List (Live)</title>
+<title>ASOIAF Fics List (Live)</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
@@ -24,8 +24,8 @@
     --scrim: rgba(17,17,17,0.42);
     --shadow-card: 0 6px 20px rgba(17,17,17,0.06); --shadow-control: 0 2px 8px rgba(17,17,17,0.06);
     --shadow-float: 0 10px 30px rgba(17,17,17,0.14); --shadow-sheet: 0 -10px 30px rgba(17,17,17,0.12);
-    /* Fandom accent: Drarry */
-    --accent: #00A676; --on-accent: #111111; --accent-text: #00704F;
+    /* Fandom accent: ASOIAF */
+    --accent: #FFB020; --on-accent: #111111; --accent-text: #8A5A00;
     color-scheme: light;
   }
   @media (prefers-color-scheme: dark) {
@@ -39,7 +39,7 @@
       --scrim: rgba(0,0,0,0.60);
       --shadow-card: 0 6px 20px rgba(0,0,0,0.45); --shadow-control: 0 2px 8px rgba(0,0,0,0.45);
       --shadow-float: 0 10px 30px rgba(0,0,0,0.55); --shadow-sheet: 0 -10px 30px rgba(0,0,0,0.5);
-      --accent-text: #3FD9A2;
+      --accent-text: #FFB020;
       color-scheme: dark;
     }
   }
@@ -53,7 +53,7 @@
     --scrim: rgba(0,0,0,0.60);
     --shadow-card: 0 6px 20px rgba(0,0,0,0.45); --shadow-control: 0 2px 8px rgba(0,0,0,0.45);
     --shadow-float: 0 10px 30px rgba(0,0,0,0.55); --shadow-sheet: 0 -10px 30px rgba(0,0,0,0.5);
-    --accent-text: #3FD9A2;
+    --accent-text: #FFB020;
     color-scheme: dark;
   }
 
@@ -211,12 +211,12 @@ function Megaphone(props) { return <svg xmlns="http://www.w3.org/2000/svg" width
 
 const STATUS_LABELS = ['Unread', 'Read', 'DNF', 'Skipped', 'Not Interested', 'Currently Reading', 'TBR', 'Paused'];
 const STATUS_UNREAD=0, STATUS_READ=1, STATUS_DNF=2, STATUS_SKIPPED=3, STATUS_NOTINT=4, STATUS_READING=5, STATUS_TBR=6, STATUS_PAUSED=7;
-const DNR_LABELS = { 0: '—', 1: 'Writing/Pacing', 2: 'Content', 3: 'Other', 10: 'Content/Tags', 12: 'Content/Category' };
+const DNR_LABELS = { 0: '—', 1: 'Writing/Pacing', 2: 'Content', 3: 'Other', 10: 'Content/Tags', 11: 'Content/Ships', 12: 'Content/Category' };
 const DNR_WRITING=1, DNR_CONTENT=2, DNR_OTHER=3;
-const DNR_LEGACY_CONTENT_TAGS=10, DNR_LEGACY_CONTENT_CAT=12;
+const DNR_LEGACY_CONTENT_TAGS=10, DNR_LEGACY_CONTENT_SHIPS=11, DNR_LEGACY_CONTENT_CAT=12;
 
 const STATUS_CODE_MAP = { '': 0, 'Read': 1, 'DNF': 2, 'Skipped': 3, 'Not Interested': 4, 'Currently Reading': 5, 'TBR': 6, 'Paused': 7 };
-const DNR_CODE_MAP = { '': 0, 'Writing/Pacing': 1, 'Content': 2, 'Other': 3, 'Content/Tags': 10, 'Content/Category': 12 };
+const DNR_CODE_MAP = { '': 0, 'Writing/Pacing': 1, 'Content': 2, 'Other': 3, 'Content/Tags': 10, 'Content/Ships': 11, 'Content/Category': 12 };
 
 const ENJOYMENT_MULTIPLIER = { 0: 1, 1: 0.25, 2: 0.6, 3: 1, 4: 1.5, 5: 2 };
 
@@ -245,8 +245,8 @@ const STATUS_DOT = {
   [STATUS_SKIPPED]: '#C9C9D3', [STATUS_NOTINT]: 'var(--inverse)', [STATUS_READING]: 'var(--blue)',
   [STATUS_TBR]: 'var(--pink)', [STATUS_PAUSED]: '#9A9AA8',
 };
-const APP_NAME = 'Drarry';
-const FANDOM_LINE = 'Harry Potter · Draco / Harry';
+const APP_NAME = 'ASOIAF';
+const FANDOM_LINE = 'A Song of Ice and Fire';
 
 const WORD_BUCKETS = [
   ['Under 15k', 0, 15000], ['15k–30k', 15000, 30000], ['30k–60k', 30000, 60000],
@@ -254,7 +254,7 @@ const WORD_BUCKETS = [
 ];
 
 const CLIENT_ID = '765897251156-e328g6jmu2obg8l0855km0iqsps062n5.apps.googleusercontent.com';
-const SHEET_ID = '1XDO0bKnLPmeURufZ4mwyifeJynwFVszCfayA_FEtKPY';
+const SHEET_ID = '1SQIBxxO8XgpvpR5vjSJS1Nu3l5Pq0z2v2W0uSYx_aMI';
 const SHEET_TAB = 'Data List';
 const SHEETS_SCOPE = 'https://www.googleapis.com/auth/spreadsheets';
 const PAGE_SIZE = 25;
@@ -265,7 +265,7 @@ function workIdFromLink(link, rowNumber) {
   return 'row-' + rowNumber;
 }
 
-const TOKEN_CACHE_KEY = 'drarry-gtoken';
+const TOKEN_CACHE_KEY = 'asoiaf-gtoken';
 
 function useGoogleAuth() {
   const [accessToken, setAccessToken] = useState(null);
@@ -332,11 +332,15 @@ function ficFromRow(headerIndex, row, rowNumber) {
   if (!title) return null;
   const link = get('Link').trim();
   const tagsRaw = get('Tags').trim();
+  const shipsRaw = get('Relationships').trim();
   const tags = tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [];
+  const ships = shipsRaw ? shipsRaw.split(',').map(t => t.trim()).filter(Boolean) : [];
   const authorsRaw = get('Author').trim();
   const authors = authorsRaw ? authorsRaw.split(',').map(a => a.trim()).filter(Boolean) : [];
   const dnrTagsRaw = get('DNR Tags').trim();
   const dnrTags = dnrTagsRaw ? dnrTagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [];
+  const dnrShipsRaw = get('DNR Ships').trim();
+  const dnrShips = dnrShipsRaw ? dnrShipsRaw.split(',').map(s => s.trim()).filter(Boolean) : [];
   const dnrCategory = get('DNR Category').trim().toUpperCase() === 'Y';
   const enjoymentRaw = parseInt(get('Enjoyment').trim(), 10);
   const enjoyment = (enjoymentRaw >= 1 && enjoymentRaw <= 5) ? enjoymentRaw : 0;
@@ -355,12 +359,12 @@ function ficFromRow(headerIndex, row, rowNumber) {
     kudos: num(get('Kudos')),
     bookmarks: num(get('Bookmarks')),
     hits: num(get('Hits')),
-    tags,
+    tags, ships,
     authors,
     summary: get('Summary').trim(),
     status: STATUS_CODE_MAP[get('Status').trim()] ?? 0,
     dnr: DNR_CODE_MAP[get('DNR Reason').trim()] ?? 0,
-    dnrTags, dnrCategory,
+    dnrTags, dnrShips, dnrCategory,
     enjoyment,
     dateStarted: normIsoDate(get('Date Started')),
     dateRead: normIsoDate(get('Date Read')),
@@ -433,7 +437,7 @@ async function sheetsApiWriteCell(accessToken, rowNumber, colLetterVal, value) {
   }
 }
 
-async function sheetsApiWriteStatus(accessToken, rowNumber, { status, dnr, kg, bk, dnrTags, dnrCategory, enjoyment }, dnrTagsCol, dnrCategoryCol, enjoymentCol) {
+async function sheetsApiWriteStatus(accessToken, rowNumber, { status, dnr, kg, bk, dnrTags, dnrShips, dnrCategory, enjoyment }, dnrTagsCol, dnrShipsCol, dnrCategoryCol, enjoymentCol) {
   const range = encodeURIComponent(`'${SHEET_TAB}'!B${rowNumber}:E${rowNumber}`);
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${range}?valueInputOption=USER_ENTERED`;
   const statusLabel = status === STATUS_UNREAD ? '' : STATUS_LABELS[status];
@@ -451,6 +455,9 @@ async function sheetsApiWriteStatus(accessToken, rowNumber, { status, dnr, kg, b
 
   if (dnrTagsCol) {
     await sheetsApiWriteCell(accessToken, rowNumber, dnrTagsCol, (dnrTags && dnrTags.length) ? dnrTags.join(', ') : '');
+  }
+  if (dnrShipsCol) {
+    await sheetsApiWriteCell(accessToken, rowNumber, dnrShipsCol, (dnrShips && dnrShips.length) ? dnrShips.join(', ') : '');
   }
   if (dnrCategoryCol) {
     await sheetsApiWriteCell(accessToken, rowNumber, dnrCategoryCol, dnrCategory ? 'Y' : '');
@@ -473,7 +480,7 @@ async function sheetsApiWriteRecommendation(accessToken, rowNumber, { recommende
 // Everything here is plain JS (no React) so the logic can be tested on its own.
 const READING_FIELD_KEYS = ['dateStarted', 'dateRead', 'lastRead', 'chaptersRead', 'timesRead'];
 const READING_COL_NAMES = { dateStarted: 'Date Started', dateRead: 'Date Read', lastRead: 'Last Read', chaptersRead: 'Chapters Read', timesRead: 'Times Read' };
-const STATUS_WRITE_KEYS = ['status', 'dnr', 'kg', 'bk', 'dnrTags', 'dnrCategory', 'enjoyment'];
+const STATUS_WRITE_KEYS = ['status', 'dnr', 'kg', 'bk', 'dnrTags', 'dnrShips', 'dnrCategory', 'enjoyment'];
 const LOG_TAB = 'Reading Log';
 const LOG_TZ = 'Australia/Melbourne';
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -669,7 +676,7 @@ async function persistFicChange(ctx, prevFic, patch, transition, now) {
   const merged = { ...prevFic, ...patch, ...transition.fields };
   const writeKeys = READING_FIELD_KEYS.filter(k => (k in patch) || (k in transition.fields));
   if (STATUS_WRITE_KEYS.some(k => k in patch)) {
-    await sheetsApiWriteStatus(ctx.accessToken, merged.rowNumber, merged, ctx.dnrTagsCol, ctx.dnrCategoryCol, ctx.enjoymentCol);
+    await sheetsApiWriteStatus(ctx.accessToken, merged.rowNumber, merged, ctx.dnrTagsCol, ctx.dnrShipsCol, ctx.dnrCategoryCol, ctx.enjoymentCol);
   }
   if (writeKeys.length) {
     await sheetsApiWriteReadingFields(ctx.accessToken, merged.rowNumber, merged, writeKeys, ctx.readingCols);
@@ -686,6 +693,7 @@ function useSheetFics(accessToken, onAuthError) {
   const [lastSynced, setLastSynced] = useState(null);
   const ficsRef = useRef([]);
   const dnrTagsColRef = useRef(null);
+  const dnrShipsColRef = useRef(null);
   const dnrCategoryColRef = useRef(null);
   const enjoymentColRef = useRef(null);
   const recColRef = useRef(null);
@@ -724,6 +732,7 @@ function useSheetFics(accessToken, onAuthError) {
       const headerIndex = {};
       header.forEach((h, i) => { headerIndex[h.trim()] = i; });
       dnrTagsColRef.current = headerIndex['DNR Tags'] !== undefined ? colLetter(headerIndex['DNR Tags']) : null;
+      dnrShipsColRef.current = headerIndex['DNR Ships'] !== undefined ? colLetter(headerIndex['DNR Ships']) : null;
       dnrCategoryColRef.current = headerIndex['DNR Category'] !== undefined ? colLetter(headerIndex['DNR Category']) : null;
       enjoymentColRef.current = headerIndex['Enjoyment'] !== undefined ? colLetter(headerIndex['Enjoyment']) : null;
       recColRef.current = headerIndex['Recommended'] !== undefined ? colLetter(headerIndex['Recommended']) : null;
@@ -779,7 +788,7 @@ function useSheetFics(accessToken, onAuthError) {
     try {
       const ctx = {
         accessToken,
-        dnrTagsCol: dnrTagsColRef.current, dnrCategoryCol: dnrCategoryColRef.current, enjoymentCol: enjoymentColRef.current,
+        dnrTagsCol: dnrTagsColRef.current, dnrShipsCol: dnrShipsColRef.current, dnrCategoryCol: dnrCategoryColRef.current, enjoymentCol: enjoymentColRef.current,
         readingCols: readingColsRef.current, log: logRef.current,
       };
       await persistFicChange(ctx, prevFic, patch, transition, now);
@@ -828,7 +837,7 @@ function useSheetFics(accessToken, onAuthError) {
     } else if (fic.retryPatch) {
       updateFic(ficId, fic.retryPatch);
     } else {
-      updateFic(ficId, { status: fic.status, dnr: fic.dnr, kg: fic.kg, bk: fic.bk, dnrTags: fic.dnrTags, dnrCategory: fic.dnrCategory, enjoyment: fic.enjoyment });
+      updateFic(ficId, { status: fic.status, dnr: fic.dnr, kg: fic.kg, bk: fic.bk, dnrTags: fic.dnrTags, dnrShips: fic.dnrShips, dnrCategory: fic.dnrCategory, enjoyment: fic.enjoyment });
     }
   }, [updateFic]);
 
@@ -910,8 +919,9 @@ function useComputedScores(fics) {
       qScore[i] = (pctlKH[i] * 1 + pctlKCH[i] * 1 + pctlBM[i] * 1.5 + pctlCO[i] * 1) / 4.5;
     }
 
-    // Full vocabulary — every tag/category/author that appears, no top-N cap
+    // Full vocabulary — every tag/ship/category/author that appears, no top-N cap
     const tagStats = new Map(); // tag -> {readW, dnf, notInt}
+    const shipStats = new Map();
     const catStats = new Map();
     const authorStats = new Map();
 
@@ -920,7 +930,7 @@ function useComputedScores(fics) {
       map.get(key)[field] += amount;
     }
 
-    // Given a fic and its DNF/Not Interested reason, work out which specific tags/
+    // Given a fic and its DNF/Not Interested reason, work out which specific tags/ships/
     // category should take the penalty. The unified "Content" reason only penalizes
     // whatever the user explicitly isolated; the legacy single-dimension reasons
     // (kept for fics marked before this was merged) fall back to blanket-penalizing
@@ -929,19 +939,21 @@ function useComputedScores(fics) {
       if (d === DNR_CONTENT) {
         return {
           tags: (f.dnrTags && f.dnrTags.length) ? f.dnrTags : [],
+          ships: (f.dnrShips && f.dnrShips.length) ? f.dnrShips : [],
           category: !!f.dnrCategory,
         };
       }
-      if (d === DNR_LEGACY_CONTENT_TAGS) return { tags: f.tags, category: false };
-      if (d === DNR_LEGACY_CONTENT_CAT) return { tags: [], category: true };
-      if (d === DNR_OTHER) return { tags: f.tags, category: true };
-      return { tags: [], category: false }; // Writing/Pacing or unset: no content penalty
+      if (d === DNR_LEGACY_CONTENT_TAGS) return { tags: f.tags, ships: [], category: false };
+      if (d === DNR_LEGACY_CONTENT_SHIPS) return { tags: [], ships: f.ships, category: false };
+      if (d === DNR_LEGACY_CONTENT_CAT) return { tags: [], ships: [], category: true };
+      if (d === DNR_OTHER) return { tags: f.tags, ships: f.ships, category: true };
+      return { tags: [], ships: [], category: false }; // Writing/Pacing or unset: no content penalty
     }
     // Author affinity is protected from any "Content" reason (old or new) since that's
-    // about tags/category, not the writing — but IS penalized by Writing/Pacing
+    // about tags/ships/category, not the writing — but IS penalized by Writing/Pacing
     // and Other, matching the flipped logic used for tags.
     function authorExcluded(d) {
-      return d === DNR_CONTENT || d === DNR_LEGACY_CONTENT_TAGS || d === DNR_LEGACY_CONTENT_CAT;
+      return d === DNR_CONTENT || d === DNR_LEGACY_CONTENT_TAGS || d === DNR_LEGACY_CONTENT_SHIPS || d === DNR_LEGACY_CONTENT_CAT;
     }
 
     for (let i = 0; i < n; i++) {
@@ -949,19 +961,22 @@ function useComputedScores(fics) {
       if (s === STATUS_READ) {
         const w = 1 + 0.5 * (kg[i] ? 1 : 0) + 1 * (bk[i] ? 1 : 0);
         for (const t of f.tags) bump(tagStats, t, 'readW', w);
+        for (const sh of f.ships) bump(shipStats, sh, 'readW', w);
         bump(catStats, f.category, 'readW', w);
-        // Enjoyment (1-5, optional) only scales the author's signal — tags and
+        // Enjoyment (1-5, optional) only scales the author's signal — tags, ships, and
         // category keep using the plain kudos/bookmark weight regardless of rating.
         const authorW = w * (ENJOYMENT_MULTIPLIER[f.enjoyment] ?? 1);
         for (const a of realAuthors(f)) bump(authorStats, a, 'readW', authorW);
       } else if (s === STATUS_DNF) {
         const targets = contentPenaltyTargets(f, d);
         for (const t of targets.tags) bump(tagStats, t, 'dnf', 1);
+        for (const sh of targets.ships) bump(shipStats, sh, 'dnf', 1);
         if (targets.category) bump(catStats, f.category, 'dnf', 1);
         if (!authorExcluded(d)) for (const a of realAuthors(f)) bump(authorStats, a, 'dnf', 1);
       } else if (s === STATUS_NOTINT) {
         const targets = contentPenaltyTargets(f, d);
         for (const t of targets.tags) bump(tagStats, t, 'notInt', 1);
+        for (const sh of targets.ships) bump(shipStats, sh, 'notInt', 1);
         if (targets.category) bump(catStats, f.category, 'notInt', 1);
         if (!authorExcluded(d)) for (const a of realAuthors(f)) bump(authorStats, a, 'notInt', 1);
       }
@@ -972,7 +987,7 @@ function useComputedScores(fics) {
       if (!s) return { affinity: 0, totalRated: 0 };
       const totalRated = s.readW + s.dnf + s.notInt;
       const rawAffinity = totalRated === 0 ? 0 : (s.readW - s.dnf * dnfWeight - s.notInt) / totalRated;
-      // Confidence shrinkage: a tag/category/author with little evidence behind it
+      // Confidence shrinkage: a tag/ship/category/author with little evidence behind it
       // gets pulled toward neutral, so one early DNF can't swing it as hard as a
       // pattern backed by a dozen ratings. C=3 means ~1 rating -> 1/4 strength,
       // ~3 ratings -> half strength, approaching full strength as evidence grows.
@@ -986,7 +1001,7 @@ function useComputedScores(fics) {
     for (let i = 0; i < n; i++) {
       const f = fics[i];
 
-      // Fix 3: strength-weighted average — a tag you feel strongly about (positive
+      // Fix 3: strength-weighted average — a tag/ship you feel strongly about (positive
       // or negative) pulls harder than ones you're merely neutral on, instead of
       // every rated item counting equally and averaging strong signals away.
       let tSum = 0, tWeight = 0, tCount = 0;
@@ -996,6 +1011,14 @@ function useComputedScores(fics) {
       }
       const tagHasData = tCount > 0;
       const ad = tWeight > 0 ? tSum / tWeight : 0;
+
+      let sSum = 0, sWeight = 0, sCount = 0;
+      for (const sh of f.ships) {
+        const { affinity, totalRated } = affinityOf(shipStats, sh, 0.15);
+        if (totalRated > 0) { sCount++; sSum += affinity * Math.abs(affinity); sWeight += Math.abs(affinity); }
+      }
+      const shipHasData = sCount > 0;
+      const af = sWeight > 0 ? sSum / sWeight : 0;
 
       const { affinity: aeRaw, totalRated: catTotalRated } = affinityOf(catStats, f.category, 0.5);
       const catHasData = catTotalRated > 0;
@@ -1016,6 +1039,7 @@ function useComputedScores(fics) {
       // intended; averaging lets multiple signals blend instead.
       let weightSum = 0, adjSum = 0;
       if (tagHasData) { weightSum += 0.6; adjSum += 0.6 * ad; }
+      if (shipHasData) { weightSum += 0.6; adjSum += 0.6 * af; }
       if (catHasData) { weightSum += 0.3; adjSum += 0.3 * ae; }
       if (authorHasData) { weightSum += 0.9; adjSum += 0.9 * au; }
       const combinedAdjustment = weightSum > 0 ? adjSum / weightSum : 0;
@@ -1082,12 +1106,13 @@ function Chip({ active, onClick, children, color, textColor }) {
 
 // panelOnly + initialPending let the Currently-reading shelf open the very same Read / DNF
 // flows (rating, kudos, bookmark, Content picker) without the status chips around them.
-function StatusPicker({ ficId, status, dnr, dnrTags, dnrCategory, enjoyment, kg, bk, tags, category, onUpdate, reading, canAddDateRead, initialPending, panelOnly, onDone, onCancel, title, authors }) {
+function StatusPicker({ ficId, status, dnr, dnrTags, dnrShips, dnrCategory, enjoyment, kg, bk, tags, ships, category, onUpdate, reading, canAddDateRead, initialPending, panelOnly, onDone, onCancel, title, authors }) {
   const [pendingStatus, setPendingStatus] = useState(initialPending ?? null);
   const [addingDate, setAddingDate] = useState(false);
   const [dateVal, setDateVal] = useState('');
   const [pendingDnrCode, setPendingDnrCode] = useState(null);
   const [pickedDnrTags, setPickedDnrTags] = useState([]);
+  const [pickedDnrShips, setPickedDnrShips] = useState([]);
   const [pickedDnrCategory, setPickedDnrCategory] = useState(false);
   const [pendingRating, setPendingRating] = useState(initialPending === STATUS_READ ? (enjoyment || 0) : 0);
 
@@ -1097,7 +1122,7 @@ function StatusPicker({ ficId, status, dnr, dnrTags, dnrCategory, enjoyment, kg,
     else if (s === STATUS_DNF || s === STATUS_NOTINT) setPendingStatus(s);
     else {
       const keepEnjoyment = s === STATUS_READING || s === STATUS_PAUSED;
-      onUpdate(ficId, { status: s, dnr: 0, dnrTags: [], dnrCategory: false, ...(keepEnjoyment ? {} : { enjoyment: 0 }) });
+      onUpdate(ficId, { status: s, dnr: 0, dnrTags: [], dnrShips: [], dnrCategory: false, ...(keepEnjoyment ? {} : { enjoyment: 0 }) });
       setPendingStatus(null);
     }
   };
@@ -1107,18 +1132,20 @@ function StatusPicker({ ficId, status, dnr, dnrTags, dnrCategory, enjoyment, kg,
     if (reasonCode === DNR_CONTENT) {
       setPendingDnrCode(reasonCode);
       setPickedDnrTags(dnrTags && dnrTags.length ? dnrTags : []);
+      setPickedDnrShips(dnrShips && dnrShips.length ? dnrShips : []);
       setPickedDnrCategory(!!dnrCategory);
     } else {
-      onUpdate(ficId, { status: pendingStatus, dnr: reasonCode, dnrTags: [], dnrCategory: false });
+      onUpdate(ficId, { status: pendingStatus, dnr: reasonCode, dnrTags: [], dnrShips: [], dnrCategory: false });
       setPendingStatus(null);
       onDone && onDone();
     }
   };
   const toggleDnrTag = (t) => setPickedDnrTags(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]);
-  const anyPicked = pickedDnrTags.length > 0 || pickedDnrCategory;
+  const toggleDnrShip = (sh) => setPickedDnrShips(prev => prev.includes(sh) ? prev.filter(x => x !== sh) : [...prev, sh]);
+  const anyPicked = pickedDnrTags.length > 0 || pickedDnrShips.length > 0 || pickedDnrCategory;
   const confirmDnrContent = () => {
-    onUpdate(ficId, { status: pendingStatus, dnr: DNR_CONTENT, dnrTags: pickedDnrTags, dnrCategory: pickedDnrCategory });
-    setPendingStatus(null); setPendingDnrCode(null); setPickedDnrTags([]); setPickedDnrCategory(false);
+    onUpdate(ficId, { status: pendingStatus, dnr: DNR_CONTENT, dnrTags: pickedDnrTags, dnrShips: pickedDnrShips, dnrCategory: pickedDnrCategory });
+    setPendingStatus(null); setPendingDnrCode(null); setPickedDnrTags([]); setPickedDnrShips([]); setPickedDnrCategory(false);
     onDone && onDone();
   };
 
@@ -1155,6 +1182,7 @@ function StatusPicker({ ficId, status, dnr, dnrTags, dnrCategory, enjoyment, kg,
                 if (dnr === DNR_CONTENT) {
                   const parts = [];
                   if (dnrTags && dnrTags.length) parts.push(`Tags: ${dnrTags.join(', ')}`);
+                  if (dnrShips && dnrShips.length) parts.push(`Ships: ${dnrShips.join(', ')}`);
                   if (dnrCategory) parts.push('Category');
                   return `Reason: Content${parts.length ? ` (${parts.join('; ')})` : ''}`;
                 }
@@ -1231,7 +1259,7 @@ function StatusPicker({ ficId, status, dnr, dnrTags, dnrCategory, enjoyment, kg,
               </div>
               {pendingDnrCode === DNR_CONTENT && (
                 <div className="panel stack" style={{ gap: 10 }}>
-                  <div style={{ fontSize: 14, fontWeight: 800 }}>What was the issue? <span className="t-meta">Pick any mix of tags or category</span></div>
+                  <div style={{ fontSize: 14, fontWeight: 800 }}>What was the issue? <span className="t-meta">Pick any mix of tags, ships or category</span></div>
                   {tags.length > 0 && (
                     <div className="stack" style={{ gap: 6 }}>
                       <div className="t-caps">Tags</div>
@@ -1239,6 +1267,18 @@ function StatusPicker({ ficId, status, dnr, dnrTags, dnrCategory, enjoyment, kg,
                         {tags.map(t => (
                           <button key={t} onClick={() => toggleDnrTag(t)} aria-pressed={pickedDnrTags.includes(t)} className="pick">
                             {pickedDnrTags.includes(t) && <Check size={12} />}{t}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {ships.length > 0 && (
+                    <div className="stack" style={{ gap: 6 }}>
+                      <div className="t-caps">Ships</div>
+                      <div className="wrap" style={{ gap: 6 }}>
+                        {ships.map(sh => (
+                          <button key={sh} onClick={() => toggleDnrShip(sh)} aria-pressed={pickedDnrShips.includes(sh)} className="pick">
+                            {pickedDnrShips.includes(sh) && <Check size={12} />}{sh}
                           </button>
                         ))}
                       </div>
@@ -1363,6 +1403,12 @@ function FicCard({ fic, scores, ficIndex, onUpdate, onRetry, onUpdateRecommendat
         <span className="row" style={{ gap: 5 }} aria-label={`${fic.hits.toLocaleString()} hits`}><Eye />{fic.hits.toLocaleString()}</span>
       </div>
 
+      {fic.ships.length > 0 && (
+        <div className="wrap" style={{ gap: 6 }} aria-label="Ships">
+          {fic.ships.map(sh => (<span key={sh} className="tag" style={{ background: 'var(--accent)', color: 'var(--on-accent)', fontWeight: 700 }}>{sh}</span>))}
+        </div>
+      )}
+
       {fic.tags.length > 0 && (
         <div className="wrap" style={{ gap: 6, alignItems: 'center' }}>
           {fic.tags.slice(0, tagsExpanded ? fic.tags.length : TAG_PREVIEW).map(t => (
@@ -1392,7 +1438,7 @@ function FicCard({ fic, scores, ficIndex, onUpdate, onRetry, onUpdateRecommendat
           AO3 <ExternalLink size={14} />
         </a>
         {(status === STATUS_UNREAD || status === STATUS_TBR || status === STATUS_SKIPPED) && (
-          <button onClick={() => onUpdate(fic.id, { status: STATUS_READING, dnr: 0, dnrTags: [], dnrCategory: false })} className="btn btn-primary grow">
+          <button onClick={() => onUpdate(fic.id, { status: STATUS_READING, dnr: 0, dnrTags: [], dnrShips: [], dnrCategory: false })} className="btn btn-primary grow">
             Start reading
           </button>
         )}
@@ -1408,7 +1454,7 @@ function FicCard({ fic, scores, ficIndex, onUpdate, onRetry, onUpdateRecommendat
       </div>
 
       {expanded && (
-        <StatusPicker ficId={fic.id} status={status} dnr={scores.dnr[ficIndex]} dnrTags={fic.dnrTags} dnrCategory={fic.dnrCategory} enjoyment={fic.enjoyment} kg={scores.kg[ficIndex]} bk={scores.bk[ficIndex]} tags={fic.tags} category={fic.category} onUpdate={onUpdate}
+        <StatusPicker ficId={fic.id} status={status} dnr={scores.dnr[ficIndex]} dnrTags={fic.dnrTags} dnrShips={fic.dnrShips} dnrCategory={fic.dnrCategory} enjoyment={fic.enjoyment} kg={scores.kg[ficIndex]} bk={scores.bk[ficIndex]} tags={fic.tags} ships={fic.ships} category={fic.category} onUpdate={onUpdate}
           reading={{ dateStarted: fic.dateStarted, dateRead: fic.dateRead, timesRead: fic.timesRead }} canAddDateRead={canAddDateRead}
           title={fic.title} authors={fic.authors} />
       )}
@@ -1454,8 +1500,8 @@ function ReadingShelfItem({ fic, onUpdate, onStep, onRetry }) {
         </div>
       )}
       {panel !== null && (
-        <StatusPicker ficId={fic.id} status={fic.status} dnr={fic.dnr} dnrTags={fic.dnrTags} dnrCategory={fic.dnrCategory} enjoyment={fic.enjoyment}
-          kg={fic.kg} bk={fic.bk} tags={fic.tags} category={fic.category} onUpdate={onUpdate}
+        <StatusPicker ficId={fic.id} status={fic.status} dnr={fic.dnr} dnrTags={fic.dnrTags} dnrShips={fic.dnrShips} dnrCategory={fic.dnrCategory} enjoyment={fic.enjoyment}
+          kg={fic.kg} bk={fic.bk} tags={fic.tags} ships={fic.ships} category={fic.category} onUpdate={onUpdate}
           panelOnly initialPending={panel === 'finish' ? STATUS_READ : STATUS_DNF}
           onDone={() => setPanel(null)} onCancel={() => setPanel(null)}
           title={fic.title} authors={fic.authors} />
@@ -1529,7 +1575,7 @@ function ExportPanel({ fics, onClose }) {
     const blob = new Blob([csvText], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = 'drarry-backup.csv';
+    a.href = url; a.download = 'asoiaf-backup.csv';
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
@@ -1555,7 +1601,7 @@ function ExportPanel({ fics, onClose }) {
   );
 }
 
-function DrarryRolladexLive() {
+function ASOIAFRolladexLive() {
   const { accessToken, gisReady, signIn, signOut, authError } = useGoogleAuth();
   const { fics, status: syncStatus, errorMsg, lastSynced, refresh, updateFic, retrySync, updateRecommendation, stepChapters, readingMissing, logMissing } = useSheetFics(accessToken, signOut);
   const scores = useComputedScores(fics);
@@ -1629,8 +1675,9 @@ function DrarryRolladexLive() {
       if (q) {
         const titleMatch = f.title.toLowerCase().includes(q);
         const tagMatch = f.tags.some(t => t.toLowerCase().includes(q));
+        const shipMatch = f.ships.some(s => s.toLowerCase().includes(q));
         const authorMatch = f.authors.some(a => a.toLowerCase().includes(q));
-        if (!titleMatch && !tagMatch && !authorMatch) continue;
+        if (!titleMatch && !tagMatch && !shipMatch && !authorMatch) continue;
       }
       indices.push(i);
     }
@@ -1704,7 +1751,7 @@ function DrarryRolladexLive() {
 
         <label className="search">
           <Search size={18} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search title, tag or author" aria-label="Search fics" />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search title, tag, ship or author" aria-label="Search fics" />
           {search && (<button onClick={() => setSearch('')} className="icon-btn" style={{ background: 'transparent' }} aria-label="Clear search"><X size={16} /></button>)}
         </label>
 
@@ -1845,7 +1892,7 @@ function DrarryRolladexLive() {
 }
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(<DrarryRolladexLive />);
+root.render(<ASOIAFRolladexLive />);
 </script>
 </body>
 </html>
